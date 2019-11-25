@@ -26,6 +26,11 @@ type Packet struct {
 	replyCounter uint16
 }
 
+// Payload return packet data
+func (p Packet) Payload() []byte {
+	return p.data
+}
+
 // Marshal encode packet to byte array data
 func (p Packet) Marshal() []byte {
 	if p.data == nil {
