@@ -54,7 +54,9 @@ func (q *UserQuery) readAllUsers() error {
 
 	// skip first 4 bytes
 	i := 4
-	for i < size {
+
+	// user entry is 72 bytes long
+	for i+72 < size {
 		var user User
 
 		// extract serial number
@@ -81,7 +83,6 @@ func (q *UserQuery) readAllUsers() error {
 
 		q.users[user.UserSN] = user
 
-		// user entry is 72 bytes long
 		i += 72
 	}
 

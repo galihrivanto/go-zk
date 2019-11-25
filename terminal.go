@@ -1,6 +1,7 @@
 package gozk
 
 import (
+	"bytes"
 	"encoding/binary"
 	"errors"
 	"fmt"
@@ -76,7 +77,7 @@ func (t *Terminal) receivePacket(bufSize int) ([]byte, error) {
 		return nil, err
 	}
 
-	Printf("received: %x\n", buf)
+	Printf("received: %x\n", bytes.Trim(buf, "\x00"))
 
 	return buf, nil
 }
