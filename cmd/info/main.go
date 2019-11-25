@@ -12,6 +12,7 @@ func main() {
 	var host string
 
 	flag.StringVar(&host, "host", "192.168.1.201:4370", "address of zk device")
+	flag.Parse()
 
 	term := gozk.NewTerminal(host)
 	if err := term.Connect(); err != nil {
