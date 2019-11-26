@@ -35,6 +35,7 @@ func (t *Terminal) sendPacket(cmd uint16, data []byte) error {
 	}
 
 	var session, replyCounter uint16
+
 	if t.lastPacket != nil {
 		session = t.lastPacket.session
 		replyCounter = t.lastPacket.replyCounter
@@ -62,9 +63,16 @@ func (t *Terminal) sendPacket(cmd uint16, data []byte) error {
 	return nil
 }
 
-func (t *Terminal) receivePacket(bufSize int) ([]byte, error) {
+func (t *Terminal) receivePacket(bufSize int, vars ...int) ([]byte, error) {
 	if t.conn == nil {
 		return nil, ErrNotConnected
+	}
+
+	if len(vars) > 0 {
+		deadline := time.Now().Add(time.Second * time.Duration(vars[0]))
+		t.conn.SetReadDeadline(deadline)
+	} else {
+		t.conn.SetReadDeadline(time.Time{})
 	}
 
 	if bufSize == 0 {
@@ -91,7 +99,7 @@ func (t *Terminal) SendCommand(cmd uint16, data []byte) error {
 // given packet parameter
 func (t *Terminal) ReceiveReply(reply *Packet, vars ...int) error {
 	if reply == nil {
-		return ErrNullPacketReceiver
+		reply = new(Packet)
 	}
 
 	var bufSize = 1024
@@ -250,12 +258,12 @@ func (t *Terminal) ReceiveLongReply(reply *Packet, vars ...int) error {
 
 // SendAndReceive is convenience wrapper around send command
 // and receive reply
-func (t *Terminal) SendAndReceive(cmd uint16, data []byte, reply *Packet) error {
+func (t *Terminal) SendAndReceive(cmd uint16, data []byte, reply *Packet, vars ...int) error {
 	if err := t.SendCommand(cmd, data); err != nil {
 		return err
 	}
 
-	return t.ReceiveReply(reply)
+	return t.ReceiveReply(reply, vars...)
 }
 
 // Connect establish connection to target terminal
