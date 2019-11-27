@@ -44,7 +44,18 @@ func main() {
 	log.Println("listening events...")
 	go func() {
 		for event := range events {
-			log.Printf("event: %v - %x\n", event.Type, bytes.Trim(event.Data, "\x00"))
+			switch event.Type {
+			case gozk.EfAttlog:
+				att, err := gozk.EventAttLogFromEvent(event)
+				if err != nil {
+					break
+				}
+
+				log.Printf("event: att log, uid: %s, kind: %d, date: %s", att.UID, att.VerificationKind, att.DateString)
+			default:
+				log.Printf("event: %v - %x\n", event.Type, bytes.Trim(event.Data, "\x00"))
+			}
+
 		}
 	}()
 

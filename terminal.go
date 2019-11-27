@@ -127,7 +127,7 @@ func (t *Terminal) ReceiveReply(reply *Packet, vars ...int) error {
 // given packet parameter
 func (t *Terminal) ReceiveLongReply(reply *Packet, vars ...int) error {
 	if reply == nil {
-		return ErrNullPacketReceiver
+		reply = new(Packet)
 	}
 
 	var bufSize = 1024
