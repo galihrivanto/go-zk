@@ -13,15 +13,6 @@ var (
 	ErrInvalidUserID = errors.New("UserID not found on user list")
 )
 
-// VerificationMode supported by device
-type VerificationMode uint16
-
-// available verification mode
-var (
-	FingerPrint VerificationMode = 0
-	Face        VerificationMode = 1
-)
-
 const maxSN = 10000
 
 // FpData contains information  if user
@@ -279,7 +270,7 @@ func (q *UserQuery) getUserSN(userID string) int {
 }
 
 // GetVerificatinMode get user verification mode
-func (q *UserQuery) GetVerificatinMode(userID string) (VerificationMode, error) {
+func (q *UserQuery) GetVerificatinMode(userID string) (VerificationKind, error) {
 	sn := q.getUserSN(userID)
 	if sn == -1 {
 		return 0, ErrInvalidUserID
@@ -297,11 +288,11 @@ func (q *UserQuery) GetVerificatinMode(userID string) (VerificationMode, error) 
 		return 0, errors.New("Invalid response")
 	}
 
-	return VerificationMode(response.data[2]), nil
+	return VerificationKind(response.data[2]), nil
 }
 
 // SetVerificationMode override user verification mode
-func (q *UserQuery) SetVerificationMode(userID string, mode VerificationMode) error {
+func (q *UserQuery) SetVerificationMode(userID string, mode VerificationKind) error {
 	sn := q.getUserSN(userID)
 	if sn == -1 {
 		return ErrInvalidUserID
