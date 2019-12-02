@@ -3,10 +3,13 @@ package push
 import (
 	"context"
 	"crypto/tls"
+	"errors"
 	"log"
 	"net/http"
 	"os"
+	"sync"
 	"syscall"
+	"time"
 
 	"github.com/galihrivanto/runner"
 	"github.com/gorilla/mux"
@@ -43,7 +46,7 @@ func (m MiddlewareFunc) Handler(next http.Handler) http.Handler {
 type MiddlewareProvider interface {
 	// GetMiddlewares returns the middleware factories that will be
 	// applied for all the endpoints during initialization
-	GetMiddlewares(*ServerOption) []Middleware
+	Middlewares(*ServerOption) []Middleware
 }
 
 // DecorateHandler returns the new handler by chaining middlewares against
@@ -87,6 +90,131 @@ type Server struct {
 	// flag to ensure server started
 	// before issuing command to device
 	started bool
+
+	// deviceCommands map, only allowed devices should be listed here.
+	// those device which "sync'ed" on initial exchange
+	// commands which target device require check on allowed devices
+	// return error device not found if not in list
+	deviceCommands sync.Map
+
+	// lisf of in-fligh commands which "sent" to device
+	// upon receiveing response, corresponding command callback
+	// will be triggered.
+	// device command id will be used as identity
+	commandCallbacks sync.Map
+}
+
+func (s *Server) getCommandQueue(sn string) ([]Command, error) {
+	// get command queued to target device
+	v, ok := s.deviceCommands.Load(sn)
+	if !ok || v == nil {
+		return nil, ErrDeviceNotRegistered
+	}
+
+	cmds, ok := v.([]Command)
+	if !ok {
+		return nil, ErrDeviceNotRegistered
+	}
+
+	return cmds, nil
+}
+
+func (s *Server) flushCommandQueue(sn string) error {
+	// get command queued to target device
+	v, ok := s.deviceCommands.Load(sn)
+	if !ok || v == nil {
+		return ErrDeviceNotRegistered
+	}
+
+	s.deviceCommands.Store(sn, make([]Command, 0))
+
+	return nil
+}
+
+func (s *Server) putCommandQueue(sn string, cmds ...Command) error {
+	queue, err := s.getCommandQueue(sn)
+	if err != nil {
+		return err
+	}
+
+	// update queue
+	queue = append(queue, cmds...)
+	s.deviceCommands.Store(sn, queue)
+
+	return nil
+}
+
+func (s *Server) registerCommandCallback(id string, cmd Command) {
+	s.commandCallbacks.Store(id, cmd)
+}
+
+func (s *Server) getCommandCallback(id string) (Command, error) {
+	v, ok := s.commandCallbacks.Load(id)
+	if !ok {
+		return Command{}, errors.New("Callback not found")
+	}
+
+	cmd, ok := v.(Command)
+	if !ok {
+		return Command{}, errors.New("Callback not found")
+	}
+
+	return cmd, nil
+}
+
+func (s *Server) removeCommandCallback(sn string) {
+	s.commandCallbacks.Delete(sn)
+}
+
+// RegisterDevice add device to registered device
+// without waiting initial exchange
+func (s *Server) RegisterDevice(sn string) {
+	s.deviceCommands.Store(sn, make([]Command, 0))
+}
+
+// DoBackground send single or multiple command to target device
+// no need to wait response from device, as should define on each
+// command callback
+func (s *Server) DoBackground(target string, cmds ...Command) error {
+	// ensure command id is generated
+	for _, cmd := range cmds {
+		cmd.ID = randomCommandID()
+
+		// put in command queue
+		if err := s.putCommandQueue(target, cmd); err != nil {
+			return err
+		}
+
+		// put in callback list
+		s.registerCommandCallback(cmd.ID, cmd)
+	}
+
+	return nil
+}
+
+// Do execute single command and wait until received response
+func (s *Server) Do(target string, cmd Command) (CommandResponse, error) {
+	cmd.ID = randomCommandID()
+
+	// put in command queue
+	if err := s.putCommandQueue(target, cmd); err != nil {
+		return CommandResponse{}, err
+	}
+
+	// replace original callback
+	waitc := make(chan CommandResponse, 0)
+	defer close(waitc)
+
+	go func() {
+		cmd.Callback = func(resp CommandResponse) {
+			waitc <- resp
+		}
+
+		// put in callback list
+		s.registerCommandCallback(cmd.ID, cmd)
+	}()
+
+	return <-waitc, nil
 }
 
 func (s *Server) registerAPI(router *mux.Router) {
@@ -94,13 +222,22 @@ func (s *Server) registerAPI(router *mux.Router) {
 	var mws = make([]Middleware, 0)
 	if s.hook != nil {
 		if hook, ok := s.hook.(MiddlewareProvider); ok {
-			mws = append(mws, hook.GetMiddlewares(s.option)...)
+			mws = append(mws, hook.Middlewares(s.option)...)
 		}
 	}
 
-	router.Handle("/iclock/cdata", DecorateHandler(http.HandlerFunc(s.handleExchange), mws...)).Methods("GET")
-	router.Handle("/iclock/getrequest", DecorateHandler(http.HandlerFunc(s.handleCommand), mws...)).Methods("GET")
-	router.Handle("/iclock/cdata", DecorateHandler(http.HandlerFunc(s.handleCommandResponse), mws...)).Methods("POST")
+	router.Handle("/iclock/cdata", DecorateHandler(http.HandlerFunc(s.handleExchange), mws...)).
+		Methods("GET")
+
+	router.Handle("/iclock/getrequest", DecorateHandler(http.HandlerFunc(s.handleInfo), mws...)).
+		Methods("GET").
+		Queries("INFO", "{.+}")
+
+	router.Handle("/iclock/getrequest", DecorateHandler(http.HandlerFunc(s.handleCommand), mws...)).
+		Methods("GET")
+
+	router.Handle("/iclock/devicecmd", DecorateHandler(http.HandlerFunc(s.handleCommandResponse), mws...)).
+		Methods("POST")
 
 	router.Handle("/{path:.*}", DecorateHandler(http.HandlerFunc(s.handleCatchAll), mws...)).Methods("GET", "POST", "PUT", "DELETE")
 }
@@ -157,6 +294,26 @@ func (s *Server) Start(ctx context.Context) {
 
 }
 
+// Ready wait until server ready
+func (s *Server) Ready() <-chan struct{} {
+	// check if server started
+	waitc := make(chan struct{}, 1)
+
+	go func() {
+		defer close(waitc)
+
+		for {
+			if s.started {
+				return
+			}
+
+			<-time.After(time.Second)
+		}
+	}()
+
+	return waitc
+}
+
 // NewServer create and start push service
 func NewServer(option *ServerOption, hook ...ServerHook) *Server {
 	var h ServerHook
@@ -164,7 +321,8 @@ func NewServer(option *ServerOption, hook ...ServerHook) *Server {
 		h = hook[0]
 	}
 
-	s := &Server{option: option, hook: h}
-
-	return s
+	return &Server{
+		option: option,
+		hook:   h,
+	}
 }

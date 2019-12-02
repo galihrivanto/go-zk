@@ -1,9 +1,5 @@
 package push
 
-import (
-	"fmt"
-)
-
 // ExchangeCommand represent response from
 // server to device upon initial exchange
 type ExchangeCommand struct {
@@ -29,20 +25,22 @@ func (c ExchangeCommand) Marshall() ([]byte, error) {
 	buf := acquireBuffer()
 	defer releaseBuffer(buf)
 
-	buf.WriteString("GET OPTION FROM:")
+	buf.WriteString("GET OPTION FROM: ")
 	buf.WriteString(c.SN)
 
-	writeStringValue(buf, "ATTLOGStamp", lf, fmt.Sprintf("%d", c.AttLogStamp))
-	writeStringValue(buf, "OPERLOGStamp", lf, fmt.Sprintf("%d", c.OperLogStamp))
-	writeStringValue(buf, "ATTPHOTOStamp", lf, fmt.Sprintf("%d", c.AttLogStamp))
+	writeIntValue(buf, "ATTLOGStamp", lf, c.AttLogStamp, true)
+	writeIntValue(buf, "OPERLOGStamp", lf, c.OperLogStamp, true)
+	writeIntValue(buf, "ATTPHOTOStamp", lf, c.AttPhotoStamp, true)
 
-	writeStringValue(buf, "ErrorDelay", lf, fmt.Sprintf("%d", c.ErrorDelay))
-	writeStringValue(buf, "Delay", lf, fmt.Sprintf("%d", c.Delay))
+	writeIntValue(buf, "ErrorDelay", lf, c.ErrorDelay)
+	writeIntValue(buf, "Delay", lf, c.Delay)
 	writeStringValue(buf, "TransTimes", lf, c.TransTimes)
-	writeStringValue(buf, "TransInterval", lf, fmt.Sprintf("%d", c.Delay))
+	writeIntValue(buf, "TransInterval", lf, c.TransInterval)
 	writeStringValue(buf, "TransFlag", lf, c.TransFlag)
-	writeStringValue(buf, "Realtime", lf, fmt.Sprintf("%d", c.Realtime))
+	writeIntValue(buf, "TimeZone", lf, c.TimeZone)
+	writeIntValue(buf, "Realtime", lf, c.Realtime)
 	writeStringValue(buf, "ServerVer", lf, c.ServerVer)
+	writeIntValue(buf, "Encrypt", lf, c.Encrypt, true)
 
 	return buf.Bytes(), nil
 }

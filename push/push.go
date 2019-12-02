@@ -7,9 +7,10 @@ import (
 
 // lib error
 var (
-	ErrEmptyPayload    = errors.New("Payload is empty")
-	ErrPayloadIsNil    = errors.New("Payload value is nil")
-	ErrReceiverInvalid = errors.New("Receiver doesn't implement correct payload interface")
+	ErrEmptyPayload        = errors.New("Payload is empty")
+	ErrPayloadIsNil        = errors.New("Payload value is nil")
+	ErrReceiverInvalid     = errors.New("Receiver doesn't implement correct payload interface")
+	ErrDeviceNotRegistered = errors.New("Device not registered")
 )
 
 // static value
@@ -21,11 +22,15 @@ var (
 	ht                = []byte("\t")
 )
 
-// Payload define wellknown operation which should be
-// supported by communication payload, either from
-// request body or request URL
-type Payload interface {
+// PayloadEncoder define encode / marshal operation
+// which should be implemented by transferable object
+type PayloadEncoder interface {
 	Marshall() ([]byte, error)
+}
+
+// PayloadDecoder define decode / unmarshal operation
+// which should be implemented by transferable object
+type PayloadDecoder interface {
 	Unmarshall([]byte) error
 }
 
@@ -36,7 +41,7 @@ func Marshall(v interface{}) ([]byte, error) {
 	}
 
 	// target value should implement payload interface
-	o, ok := v.(Payload)
+	o, ok := v.(PayloadEncoder)
 	if !ok {
 		return nil, ErrReceiverInvalid
 	}
@@ -51,7 +56,7 @@ func Unmarshall(b []byte, v interface{}) error {
 	}
 
 	// target value should implement payload interface
-	o, ok := v.(Payload)
+	o, ok := v.(PayloadDecoder)
 	if !ok {
 		return ErrReceiverInvalid
 	}
@@ -82,7 +87,7 @@ func (v value) ToInt(vars ...int) int {
 		return def
 	}
 
-	if v, err := strconv.ParseInt(string(v), 10, 64); err != nil {
+	if v, err := strconv.ParseInt(string(v), 10, 64); err == nil {
 		return int(v)
 	}
 

@@ -54,7 +54,7 @@ func (d *Device) Unmarshall(b []byte) error {
 	// extract values
 	d.SN = extractValue(b, "SN").ToString()
 	d.Option = extractValue(b, "options").ToString()
-	d.PushVersion = extractValue(b, "pushversion").ToString()
+	d.PushVersion = extractValue(b, "pushver").ToString()
 	d.Language = extractValue(b, "language").ToInt()
 	d.PushCommKey = extractValue(b, "pushcommkey").ToString()
 

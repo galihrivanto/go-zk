@@ -2,6 +2,7 @@ package push
 
 import (
 	"bytes"
+	"fmt"
 )
 
 func writeValue(b *bytes.Buffer, key string, sep []byte, v []byte) {
@@ -28,6 +29,28 @@ func writeStringValue(b *bytes.Buffer, key string, sep []byte, v string) {
 
 	b.WriteString(key + "=")
 	b.WriteString(v)
+}
+
+func writeIntValue(b *bytes.Buffer, key string, sep []byte, v int, vars ...bool) {
+	var useNone bool
+	if len(vars) > 0 {
+		useNone = vars[0]
+	}
+
+	var val string
+
+	if v == 0 && useNone {
+		val = "None"
+	} else {
+		val = fmt.Sprintf("%d", v)
+	}
+
+	if sep != nil {
+		b.Write(sep)
+	}
+
+	b.WriteString(key + "=")
+	b.WriteString(val)
 }
 
 func extractValue(b []byte, key string, vars ...[]byte) value {

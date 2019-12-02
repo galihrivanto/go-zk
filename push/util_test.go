@@ -2,6 +2,7 @@ package push
 
 import (
 	"bytes"
+	"log"
 	"testing"
 )
 
@@ -21,6 +22,8 @@ func TestExtractValue(t *testing.T) {
 			t.Errorf("result shouldn't nil")
 			t.FailNow()
 		}
+
+		log.Println("v", string(v))
 
 		if bytes.Compare(v, []byte(tc[1])) == -1 {
 			t.Errorf("expected %s but returned %s", tc[1], string(v))
