@@ -8,18 +8,18 @@ import (
 	"log"
 	"os"
 
-	gozk "github.com/galihrivanto/go-zk"
+	rgozk "github.com/galihrivanto/go-zk/remote"
 )
 
 func main() {
-	gozk.SetVerbose()
+	rgozk.SetVerbose()
 
 	var host string
 
 	flag.StringVar(&host, "host", "192.168.1.201:4370", "address of zk device")
 	flag.Parse()
 
-	term := gozk.NewTerminal(host)
+	term := rgozk.NewTerminal(host)
 	if err := term.Connect(); err != nil {
 		log.Println(err)
 		os.Exit(1)
@@ -34,7 +34,7 @@ func main() {
 
 	ctx, cancel := context.WithCancel(context.Background())
 
-	listener := gozk.NewEventListener(term)
+	listener := rgozk.NewEventListener(term)
 	events, err := listener.Listen(ctx)
 	if err != nil {
 		log.Println(err)
@@ -45,8 +45,8 @@ func main() {
 	go func() {
 		for event := range events {
 			switch event.Type {
-			case gozk.EfAttlog:
-				att, err := gozk.EventAttLogFromEvent(event)
+			case rgozk.EfAttlog:
+				att, err := rgozk.EventAttLogFromEvent(event)
 				if err != nil {
 					break
 				}

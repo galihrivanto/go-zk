@@ -1,6 +1,8 @@
 package push
 
-import "fmt"
+import (
+	"fmt"
+)
 
 // ExchangeCommand represent response from
 // server to device upon initial exchange

@@ -1,4 +1,4 @@
-package gozk
+package remote
 
 import (
 	"encoding/binary"

@@ -52,7 +52,7 @@ func extractValue(b []byte, key string, vars ...[]byte) value {
 
 	// value start after value separator
 	if sep := bytes.Index(b, keySeparator); sep != -1 {
-		return b[sep:]
+		return b[sep+1:]
 	}
 
 	// consider invalid

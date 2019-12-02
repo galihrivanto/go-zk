@@ -1,10 +1,10 @@
-package gozk
+package remote
 
-import "errors"
-
-import "encoding/binary"
-
-import "fmt"
+import (
+	"encoding/binary"
+	"errors"
+	"fmt"
+)
 
 // VerificationKind supported by device
 type VerificationKind int

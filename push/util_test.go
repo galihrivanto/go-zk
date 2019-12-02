@@ -24,6 +24,7 @@ func TestExtractValue(t *testing.T) {
 
 		if bytes.Compare(v, []byte(tc[1])) == -1 {
 			t.Errorf("expected %s but returned %s", tc[1], string(v))
+			t.FailNow()
 		}
 	}
 }
